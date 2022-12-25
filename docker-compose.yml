@@ -1,4 +1,5 @@
-version: '3.3'
+version: '3.7'
+
 services:
 
   reverse-proxy:
@@ -9,25 +10,29 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     labels:
-      - traefik.http.middlewares.gzip.compress=true
-      - traefik.http.middlewares.gzip.compress.excludedcontenttypes=image/png, image/jpeg, font/woff2
+      - 'traefik.http.middlewares.gzip.compress=true'
+      - 'traefik.http.middlewares.gzip.compress.excludedcontenttypes=image/png, image/jpeg, font/woff2'
 
   frontend:
     image: 'plone/plone-frontend:16.5.0'
     environment:
-      RAZZLE_INTERNAL_API_PATH: http://backend:8080/Plone
+      - 'RAZZLE_INTERNAL_API_PATH=http://backend:8080/Plone'
     ports:
       - '3000:3000'
     depends_on:
       - backend
     labels:
-      - traefik.enable=true
-      # SERVICE
-      - traefik.http.services.plone-frontend.loadbalancer.server.port=3000
-      # HOSTS: Main
-      - traefik.http.routers.frontend.rule=Host(`localhost`)
-      - traefik.http.routers.frontend.service=plone-frontend
-      - traefik.http.routers.frontend.middlewares=gzip
+      # from https://training.plone.org/effective-volto/deployment/docker.html?highlight=traefik
+      - 'traefik.enable=true'
+
+      - 'traefik.http.services.plone-frontend-srv.loadbalancer.server.port=3000'
+      - 'traefik.http.services.plone-frontend-srv.loadBalancer.sticky.cookie=true'
+      - 'traefik.http.services.plone-frontend-srv.loadbalancer.sticky.cookie.samesite=strict'
+      - 'traefik.http.services.plone-frontend-srv.loadBalancer.sticky.cookie.name=plone-frontend-sticky-cookie'
+
+      - 'traefik.http.routers.plone-frontend-http-rl.rule=Host(`localhost`) && ( ! PathPrefix(`/++api++`) )'
+      - 'traefik.http.routers.plone-frontend-http-rl.service=plone-frontend-srv'
+      - 'traefik.http.routers.plone-frontend-http-rl.middlewares=gzip'
 
   backend:
     image: 'plone/plone-backend:6.0.0.2'
@@ -37,12 +42,17 @@ services:
     ports:
       - '8080:8080'
     labels:
-      - traefik.enable=true
-      # SERVICE
-      - traefik.http.services.plone-backend.loadbalancer.server.port=8080
-      # Plone API
-      - traefik.http.routers.backend.rule=Host(`localhost`) && PathPrefix(`/++api++`)
-      - traefik.http.routers.backend.service=plone-backend
-      - "traefik.http.middlewares.backend.replacepathregex.regex=^/\\+\\+api\\+\\+($$|/.*)"
-      - "traefik.http.middlewares.backend.replacepathregex.replacement=/VirtualHostBase/http/localhost/Plone/++api++/VirtualHostRoot/$$1"
-      - traefik.http.routers.backend.middlewares=gzip,backend
+      # from https://training.plone.org/effective-volto/deployment/docker.html?highlight=traefik
+      - 'traefik.enable=true'
+
+      - 'traefik.http.services.plone-backend-srv.loadbalancer.server.port=8080'
+      - 'traefik.http.services.plone-backend-srv.loadBalancer.sticky.cookie=true'
+      - 'traefik.http.services.plone-backend-srv.loadbalancer.sticky.cookie.samesite=strict'
+      - 'traefik.http.services.plone-backend-srv.loadBalancer.sticky.cookie.name=plone-backend-sticky-cookie'
+
+      - 'traefik.http.middlewares.plone-backend-rewrite-mdw.replacepathregex.regex=^/\+\+api\+\+($$|/.*)'
+      - 'traefik.http.middlewares.plone-backend-rewrite-mdw.replacepathregex.replacement=/VirtualHostBase/http/localhost/Plone/++api++/VirtualHostRoot/$$1'
+
+      - 'traefik.http.routers.plone-backend-http-rl.rule=Host(`localhost`) && PathPrefix(`/++api++`)'
+      - 'traefik.http.routers.plone-backend-http-rl.service=plone-backend-srv'
+      - 'traefik.http.routers.plone-backend-http-rl.middlewares=gzip,plone-backend-rewrite-mdw'
