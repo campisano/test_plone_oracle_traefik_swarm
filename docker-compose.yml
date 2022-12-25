@@ -1,29 +1,48 @@
-version: "3"
+version: '3.3'
 services:
 
-  webserver:
-    image: nginx
-    volumes:
-      - ./default.conf:/etc/nginx/conf.d/default.conf
-    depends_on:
-      - backend
-      - frontend
+  reverse-proxy:
+    image: 'traefik:v2.9.6'
+    command: --providers.docker
     ports:
-    - "80:80"
+      - '80:80'
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    labels:
+      - traefik.http.middlewares.gzip.compress=true
+      - traefik.http.middlewares.gzip.compress.excludedcontenttypes=image/png, image/jpeg, font/woff2
 
   frontend:
-    image: plone/plone-frontend:16.5.0
+    image: 'plone/plone-frontend:16.5.0'
     environment:
       RAZZLE_INTERNAL_API_PATH: http://backend:8080/Plone
     ports:
-    - "3000:3000"
+      - '3000:3000'
     depends_on:
       - backend
+    labels:
+      - traefik.enable=true
+      # SERVICE
+      - traefik.http.services.plone-frontend.loadbalancer.server.port=3000
+      # HOSTS: Main
+      - traefik.http.routers.frontend.rule=Host(`localhost`)
+      - traefik.http.routers.frontend.service=plone-frontend
+      - traefik.http.routers.frontend.middlewares=gzip
 
   backend:
-    image: plone/plone-backend:6.0.0.2
+    image: 'plone/plone-backend:6.0.0.2'
     environment:
       - 'SITE=Plone'
       - 'PROFILES=plone.volto:default-homepage'
     ports:
-    - "8080:8080"
+      - '8080:8080'
+    labels:
+      - traefik.enable=true
+      # SERVICE
+      - traefik.http.services.plone-backend.loadbalancer.server.port=8080
+      # Plone API
+      - traefik.http.routers.backend.rule=Host(`localhost`) && PathPrefix(`/++api++`)
+      - traefik.http.routers.backend.service=plone-backend
+      - "traefik.http.middlewares.backend.replacepathregex.regex=^/\\+\\+api\\+\\+($$|/.*)"
+      - "traefik.http.middlewares.backend.replacepathregex.replacement=/VirtualHostBase/http/localhost/Plone/++api++/VirtualHostRoot/$$1"
+      - traefik.http.routers.backend.middlewares=gzip,backend
