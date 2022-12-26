@@ -1,0 +1,31 @@
+services:
+  - docker:dind
+
+build-only:
+  stage: build
+  image: docker:latest
+  script:
+    - 'docker build --pull --no-cache --rm --file Dockerfile .'
+  except:
+    - tags
+
+build-delivery:
+  stage: build
+  image: riccardocampisano/public:docker_buildx_1.0.0
+  variables:
+    PROJECT_NAME: plone-backend-oracle
+    RELEASE_TAG: ${PROJECT_NAME}_${CI_COMMIT_REF_NAME}
+    RELEASE_TAG_LATEST: ${PROJECT_NAME}_latest
+  script:
+    - 'echo "${DOCKER_PASSWORD}" | docker login --username "${DOCKER_USERNAME}" --password-stdin'
+    - 'docker pull "${DOCKER_REPOSITORY}:${RELEASE_TAG}" &> /dev/null && echo "ERROR: docker image \"${DOCKER_REPOSITORY}:${RELEASE_TAG}\" already exists" >&2 && exit 1'
+    # from https://docs.docker.com/build/building/multi-platform/#building-multi-platform-images
+    - 'docker pull tonistiigi/binfmt:latest'
+    - 'docker run --privileged --rm tonistiigi/binfmt --uninstall qemu-*'
+    - 'docker run --privileged --rm tonistiigi/binfmt --install arm64'
+    - 'docker buildx ls'
+    - 'docker buildx create --name currentbuilder --driver docker-container --bootstrap --use'
+    - 'docker buildx inspect'
+    - 'docker buildx build --platform linux/amd64,linux/arm64 --tag "${DOCKER_REPOSITORY}:${RELEASE_TAG}" --file Dockerfile --push .'
+  only:
+    - tags
