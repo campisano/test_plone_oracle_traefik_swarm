@@ -1,11 +1,14 @@
 services:
   - docker:dind
 
+variables:
+  DOCKER_IMAGE_FROM: plone/plone-backend:6.0.0.2
+
 build-only:
   stage: build
   image: docker:latest
   script:
-    - 'docker build --pull --no-cache --rm --file Dockerfile .'
+    - 'docker build --build-arg "FROM_IMAGE=${DOCKER_IMAGE_FROM=}" --pull --no-cache --rm --file Dockerfile .'
   except:
     - tags
 
@@ -26,6 +29,6 @@ build-delivery:
     - 'docker buildx ls'
     - 'docker buildx create --name currentbuilder --driver docker-container --bootstrap --use'
     - 'docker buildx inspect'
-    - 'docker buildx build --platform linux/amd64,linux/arm64 --tag "${DOCKER_REPOSITORY}:${RELEASE_TAG}" --file Dockerfile --push .'
+    - 'docker buildx build --platform linux/amd64,linux/arm64 --build-arg "FROM_IMAGE=${DOCKER_IMAGE_FROM=}" --tag "${DOCKER_REPOSITORY}:${RELEASE_TAG}" --file Dockerfile --push .'
   only:
     - tags

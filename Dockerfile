@@ -1,4 +1,5 @@
-FROM plone/plone-backend:6.0.0.2
+ARG FROM_IMAGE
+FROM $FROM_IMAGE AS linux-common-img
 
 RUN export DEBIAN_FRONTEND=noninteractive \
     && sed -i -E 's/ main$/ main contrib non-free/g' /etc/apt/sources.list \
@@ -15,20 +16,13 @@ RUN export DEBIAN_FRONTEND=noninteractive \
     && apt-get -qq clean \
     && rm -rf /var/lib/apt/lists/* /var/cache/apt/* /usr/share/man/*
 
-# Oracle
 
-# RUN mkdir -p /opt/oracle \
-#     && cd /opt/oracle \
-#     && curl -O -sS https://download.oracle.com/otn_software/linux/instantclient/191000/instantclient-basic-linux.arm64-19.10.0.0.0dbru.zip \
-#     && unzip -q instantclient-basic-linux.arm64-19.10.0.0.0dbru.zip \
-#     && rm -f instantclient-basic-linux.arm64-19.10.0.0.0dbru.zip \
-#     && curl -O -sS https://download.oracle.com/otn_software/linux/instantclient/191000/instantclient-sqlplus-linux.arm64-19.10.0.0.0dbru.zip \
-#     && unzip -q instantclient-sqlplus-linux.arm64-19.10.0.0.0dbru.zip \
-#     && rm -f instantclient-sqlplus-linux.arm64-19.10.0.0.0dbru.zip \
-#     && curl -O -sS https://download.oracle.com/otn_software/linux/instantclient/191000/instantclient-sdk-linux.arm64-19.10.0.0.0dbru.zip \
-#     && unzip -q instantclient-sdk-linux.arm64-19.10.0.0.0dbru.zip \
-#     && rm -f instantclient-sdk-linux.arm64-19.10.0.0.0dbru.zip \
-#     && mv /opt/oracle/instantclient_* /opt/oracle/instantclient
+
+
+
+FROM --platform=linux/amd64 linux-common-img AS linux-amd64-img
+
+# Oracle drivers
 
 RUN mkdir -p /opt/oracle \
     && cd /opt/oracle \
@@ -42,6 +36,36 @@ RUN mkdir -p /opt/oracle \
     && unzip -q instantclient-sdk-linux.x64-21.8.0.0.0dbru.zip \
     && rm -f instantclient-sdk-linux.x64-21.8.0.0.0dbru.zip \
     && mv /opt/oracle/instantclient_* /opt/oracle/instantclient
+
+
+
+
+
+ARG FROM_IMAGE
+FROM --platform=linux/arm64/v8 linux-common-img AS linux-arm64-img
+
+# Oracle drivers
+
+RUN mkdir -p /opt/oracle \
+    && cd /opt/oracle \
+    && curl -O -sS https://download.oracle.com/otn_software/linux/instantclient/191000/instantclient-basic-linux.arm64-19.10.0.0.0dbru.zip \
+    && unzip -q instantclient-basic-linux.arm64-19.10.0.0.0dbru.zip \
+    && rm -f instantclient-basic-linux.arm64-19.10.0.0.0dbru.zip \
+    && curl -O -sS https://download.oracle.com/otn_software/linux/instantclient/191000/instantclient-sqlplus-linux.arm64-19.10.0.0.0dbru.zip \
+    && unzip -q instantclient-sqlplus-linux.arm64-19.10.0.0.0dbru.zip \
+    && rm -f instantclient-sqlplus-linux.arm64-19.10.0.0.0dbru.zip \
+    && curl -O -sS https://download.oracle.com/otn_software/linux/instantclient/191000/instantclient-sdk-linux.arm64-19.10.0.0.0dbru.zip \
+    && unzip -q instantclient-sdk-linux.arm64-19.10.0.0.0dbru.zip \
+    && rm -f instantclient-sdk-linux.arm64-19.10.0.0.0dbru.zip \
+    && mv /opt/oracle/instantclient_* /opt/oracle/instantclient
+
+
+
+
+
+ARG TARGETOS
+ARG TARGETARCH
+FROM ${TARGETOS}-${TARGETARCH}-img as final-img
 
 ENV LD_LIBRARY_PATH=/opt/oracle/instantclient
 ENV TNS_ADMIN=/opt/oracle/instantclient/network/admin
