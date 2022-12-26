@@ -1,4 +1,11 @@
 ARG FROM_IMAGE
+ARG TARGETOS
+ARG TARGETARCH
+
+
+
+
+
 FROM $FROM_IMAGE AS linux-common-img
 
 RUN export DEBIAN_FRONTEND=noninteractive \
@@ -41,7 +48,6 @@ RUN mkdir -p /opt/oracle \
 
 
 
-ARG FROM_IMAGE
 FROM --platform=linux/arm64/v8 linux-common-img AS linux-arm64-img
 
 # Oracle drivers
@@ -63,9 +69,7 @@ RUN mkdir -p /opt/oracle \
 
 
 
-ARG TARGETOS
-ARG TARGETARCH
-FROM ${TARGETOS}-${TARGETARCH}-img as final-img
+FROM ${TARGETOS}-${TARGETARCH}-img AS final-img
 
 ENV LD_LIBRARY_PATH=/opt/oracle/instantclient
 ENV TNS_ADMIN=/opt/oracle/instantclient/network/admin
@@ -76,13 +80,21 @@ ENV TNS_ADMIN=/opt/oracle/instantclient/network/admin
 # and https://6.docs.plone.org/install/containers/images/backend.html?highlight=relstorage%20conf#relational-database-variables
 USER plone
 RUN bash -c 'source bin/activate \
+    && pip install --progress-bar off --no-color --no-input --no-cache-dir --upgrade pip setuptools wheel \
     && pip install --progress-bar off --no-color --no-input --no-cache-dir "cx_Oracle" || true \
-    && pip install --progress-bar off --no-color --no-input --no-cache-dir "RelStorage[oracle]" \
-    && pip install --progress-bar off --no-color --no-input --no-cache-dir "plone.app.mosaic"'
+    && pip install --progress-bar off --no-color --no-input --no-cache-dir "RelStorage[oracle]"'
+
 USER root
 
-COPY cfg/backend/relstorage.conf etc/relstorage.conf
+COPY cfg/relstorage.conf etc/relstorage.conf
 COPY scripts scripts
+RUN chmod 0644 etc/relstorage.conf && chmod -R 0755 scripts
 
 ENTRYPOINT ["/app/scripts/entrypoints.sh", "/app/docker-entrypoint.sh"]
 CMD ["start"]
+
+
+
+
+
+FROM final-img
