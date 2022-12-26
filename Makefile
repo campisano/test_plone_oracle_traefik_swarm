@@ -21,3 +21,7 @@ swarm-down:
 .PHONY: swarm-logs
 swarm-logs:
 	docker service logs -f $$(docker stack services plone --quiet --filter name=plone_backend)
+
+.PHONY: image
+image:
+	docker build -t plone-backend:local .

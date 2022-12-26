@@ -4,6 +4,16 @@ networks:
   edge-net:
     external: true
 
+secrets:
+  plone_RELSTORAGE_ORA_USR_v1:
+    external: true
+  plone_RELSTORAGE_ORA_PWD_v1:
+    external: true
+  plone_RELSTORAGE_DSN_v1:
+    external: true
+  plone_TNS_ADMIN_FILEDATA_v1:
+    external: true
+
 services:
 
   reverse-proxy:
@@ -66,12 +76,22 @@ services:
         - 'traefik.http.routers.plone-frontend-http-rl.middlewares=gzip'
 
   backend:
-    image: 'plone/plone-backend:6.0.0.2'
+    image: plone-backend:local
     networks:
       - edge-net
-    environment:
-      - 'SITE=Plone' # optional, first time creation
-      - 'PROFILES=plone.volto:default-homepage'
+    # environment:
+      # optionals env vars for Site first time creation
+      # - 'SITE=Plone'
+      # - 'PROFILES=plone.volto:default-homepage'
+    secrets:
+      - source: plone_RELSTORAGE_ORA_USR_v1
+        target: RELSTORAGE_ORA_USR
+      - source: plone_RELSTORAGE_ORA_PWD_v1
+        target: RELSTORAGE_ORA_PWD
+      - source: plone_RELSTORAGE_DSN_v1
+        target: RELSTORAGE_DSN
+      - source: plone_TNS_ADMIN_FILEDATA_v1
+        target: TNS_ADMIN_FILEDATA
     deploy:
       replicas: 1
       labels:
