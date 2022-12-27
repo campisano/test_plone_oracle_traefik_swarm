@@ -24,4 +24,5 @@ swarm-logs:
 
 .PHONY: image
 image:
+	./frontend/ci/build.sh
 	./backend/ci/build.sh

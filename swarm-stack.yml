@@ -54,7 +54,7 @@ services:
         - 'traefik.http.middlewares.gzip.compress.excludedcontenttypes=image/png, image/jpeg, font/woff2'
 
   frontend:
-    image: 'plone/plone-frontend:16.5.0'
+    image: 'plone-frontend:local'
     networks:
       - edge-net
     environment:
@@ -76,7 +76,7 @@ services:
         - 'traefik.http.routers.plone-frontend-http-rl.middlewares=gzip'
 
   backend:
-    image: plone-backend:local
+    image: 'plone-backend:local'
     networks:
       - edge-net
     # environment:

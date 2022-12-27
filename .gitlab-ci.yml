@@ -7,11 +7,20 @@ build-only:
   before_script:
     - apk add --no-cache bash
   script:
+    - ./frontend/ci/build.sh
     - ./backend/ci/build.sh
   except:
     - tags
 
-build-delivery:
+build-delivery-frontend:
+  stage: build
+  image: riccardocampisano/public:docker_buildx_1.0.0
+  script:
+    - ./frontend/ci/delivery.sh
+  only:
+    - tags
+
+build-delivery-backend:
   stage: build
   image: riccardocampisano/public:docker_buildx_1.0.0
   script:
